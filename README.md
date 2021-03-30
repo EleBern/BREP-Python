@@ -60,6 +60,10 @@ For the reason, the model is also required for full test.
 
 Under construction.
 
+## Copyright
+
+Under construction. It will be treated under open source licence.
+
 ## Update log of the README
 
 - 31 March 2021: First publication.
