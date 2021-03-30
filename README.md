@@ -20,7 +20,7 @@ This translation works with the same environment, but requires additional packag
 
 ## Original BREP
 
-I copied BREP and made several modification to original BREP to output
+<!-- I copied BREP and made several modification to original BREP to output
 - progress messages
 - random numbers
 for debugging reasons.
@@ -28,7 +28,10 @@ for debugging reasons.
 Moreover, with MPI version 3, `mpi` package of Chicken Scheme 4 cannot compiled.
 For more safety compilation of BREP, I modified script to deploy/compile it.
 
-With my modification, I confirmed the script work in my local computer (AMD Ryzen 5 3600; x86_64 architecture, 6 cores).
+With my modification, I confirmed the script work in my local computer (AMD Ryzen 5 3600; x86_64 architecture, 6 cores). -->
+
+The original BREP is protected with copyright.
+The script can be obtained from [the GL model](https://senselab.med.yale.edu/ModelDB/showModel.cshtml?model=232023).
 
 ## Requirements
 
@@ -47,8 +50,8 @@ and Python packages
 
 the author managed the packages with `pip` (version 21.0.1).
 
-For original BREP, additionally **[Chicken Scheme](https://www.call-cc.org)** version 4 (tested with version 4.8.0) is required.
-This is an outdated version but several packages of BREP are not compatible Chicken Scheme 5.
+<!-- For original BREP, additionally **[Chicken Scheme](https://www.call-cc.org)** version 4 (tested with version 4.8.0) is required.
+This is an outdated version but several packages of BREP are not compatible Chicken Scheme 5. -->
 
 Again, BREP works as a part of [the GL model](https://senselab.med.yale.edu/ModelDB/showModel.cshtml?model=232023).
 For the reason, the model is also required for full test.
