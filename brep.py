@@ -46,7 +46,7 @@ from argparse import ArgumentParser
 ### System variables                                    ###
 ###########################################################
 
-tb = time.time()
+tb0 = time.time()
 
 MPIcomm = MPI.COMM_WORLD
 MPIsize = MPIcomm.Get_size()
@@ -92,11 +92,20 @@ args = argparser.parse_args()
 prmdir=os.getenv('PARAMDIR')
 h.xopen(os.path.join(prmdir, 'Parameters.hoc'))
 
+def vprint(s):
+    if args.verbose:
+        print('(v)', s)
+
+
+print('brep.py rank {0} args.verbose: {0}'.format(MPIrank, args.verbose))
+
 ###########################################################
 ### Load/generate coordinates                           ###
 ###########################################################
 
+tb = time.time()
 if args.loadFiles:
+    vprint('brep.py rank {0} loadFiles: {1}'.format(MPIrank, args.loadFiles))
     GrC = np.loadtxt('GCcoordinates.sorted.dat')
     TJ  = np.loadtxt('GCTcoordinates.sorted.dat')
     GoC = np.loadtxt('GoCcoordinates.sorted.dat')
@@ -136,8 +145,10 @@ if args.loadFiles:
     axonSegIdx = np.arange(len(GoCaxon))%axonPerGoC
     axonSecIdx = axonSegIdx%(GoCAxonSegs*GoCAxonPts)//(GoCAxonPts)+1
     axonDendIdx = h.numAxonGolgi - axonSegIdx//(GoCAxonSegs*GoCAxonPts)
+    vprint('brep.py rank {0} Finish to load files ({1:.2f} s)'.format(MPIrank, time.time()-tb))
 
 else:
+    vprint('brep.py rank {0} loadFiles: {1}'.format(MPIrank, args.loadFiles))
     if os.path.isfile('GCcoordinates.sorted.dat') and os.path.isfile('GCTcoordinates.sorted.dat'):
         GrC = np.loadtxt('GCcoordinates.sorted.dat')
         TJ = np.loadtxt('GCTcoordinates.sorted.dat')
@@ -294,6 +305,8 @@ else:
     axonSecIdx = axonSegIdx%(GoCAxonSegs*GoCAxonPts)//(GoCAxonPts)+1
     axonDendIdx = h.numAxonGolgi - axonSegIdx//(GoCAxonSegs*GoCAxonPts)
 
+    vprint('brep.py rank {0} Finish to create coordinations ({1:.2f} s)'.format(MPIrank, time.time()-tb))
+
 if args.testMode:
     print('TEST MODE')
     sys.exit(1)
@@ -303,6 +316,8 @@ if args.testMode:
 ### GrC PFs to GoC AD for glutamatergic synapses     ###
 ###########################################################
 
+vprint('brep.py rank {0} PFs to GoCs'.format(MPIrank))
+tb = time.time()
 tree = KDTree(PFs[:,2:])
 K = min(len(PFs), K4T)
 distKDTree,idxKDTree = tree.query(GoCadend, k=K)
@@ -333,12 +348,14 @@ np.savetxt('PFtoGoCsources{0}.dat'.format(MPIrank), results[:,0], fmt='%d')
 np.savetxt('PFtoGoCtargets{0}.dat'.format(MPIrank), results[:,1], fmt='%d')
 np.savetxt('PFtoGoCdistances{0}.dat'.format(MPIrank), results[:,2], fmt='%f')
 np.savetxt('PFtoGoCsegments{0}.dat'.format(MPIrank), results[:,[3,4]], fmt='%d')
+vprint('brep.py rank {0} PFs to GoCs ({1:.2f} s)'.format(MPIrank, time.time()-tb))
 
 
 ###########################################################
 ### GrC AAs to GoC AD/BD for glutamatergic synapses     ###
 ###########################################################
 
+vprint('brep.py rank {0} AAs to GoCs'.format(MPIrank))
 tree = KDTree(AAs[:,2:])
 K = min(len(AAs), K4T)
 distKDTree,idxKDTree = tree.query(GoCdend, k=K)
@@ -369,11 +386,13 @@ np.savetxt('AAtoGoCsources{0}.dat'.format(MPIrank), results[:,0], fmt='%d')
 np.savetxt('AAtoGoCtargets{0}.dat'.format(MPIrank), results[:,1], fmt='%d')
 np.savetxt('AAtoGoCdistances{0}.dat'.format(MPIrank), results[:,2], fmt='%f')
 np.savetxt('AAtoGoCsegments{0}.dat'.format(MPIrank), results[:,[3,4]], fmt='%d')
+vprint('brep.py rank {0} AAs to GoCs ({1:.2f} s)'.format(MPIrank, time.time()-tb))
 
 ###########################################################
 ### GoC axon to GoC soma for GABAergic synapses         ###
 ###########################################################
 
+vprint('brep.py rank {0} GoCs to GoCs inh'.format(MPIrank))
 idx = np.where(GoCaxonIdx%MPIsize==MPIrank)[0]
 axonForTree = np.vstack([np.arange(len(idx)), GoCaxonIdx[idx], GoCaxon[idx].T]).T
 
@@ -404,6 +423,7 @@ results = results[results[:,1]%MPIsize==MPIrank]
 np.savetxt('GoCtoGoCsources{0}.dat'.format(MPIrank), results[:,0], fmt='%d')
 np.savetxt('GoCtoGoCtargets{0}.dat'.format(MPIrank), results[:,1], fmt='%d')
 np.savetxt('GoCtoGoCdistances{0}.dat'.format(MPIrank), results[:,2], fmt='%f')
+vprint('brep.py rank {0} GoCs to GoCs inh ({1:.2f} s)'.format(MPIrank, time.time()-tb))
 
 
 
@@ -411,6 +431,7 @@ np.savetxt('GoCtoGoCdistances{0}.dat'.format(MPIrank), results[:,2], fmt='%f')
 ### GoC soma to GoC soma for gap junction               ###
 ###########################################################
 
+vprint('brep.py rank {0} GoCs to GoCs gap'.format(MPIrank))
 GoCidx = np.arange(len(GoC))
 idx = np.where(GoCidx%MPIsize==MPIrank)[0]
 GoCForTree = np.vstack([np.arange(len(idx)), GoCidx[idx], GoC[idx].T]).T
@@ -438,3 +459,9 @@ results = results[results[:,1]%MPIsize==MPIrank]
 np.savetxt('GoCtoGoCgapsources{0}.dat'.format(MPIrank), results[:,0], fmt='%d')
 np.savetxt('GoCtoGoCgaptargets{0}.dat'.format(MPIrank), results[:,1], fmt='%d')
 np.savetxt('GoCtoGoCgapdistances{0}.dat'.format(MPIrank), results[:,2], fmt='%f')
+vprint('brep.py rank {0} GoCs to GoCs gap ({1:.2f} s)'.format(MPIrank, time.time()-tb))
+
+
+vprint('brep.py rank {0} completed ({1:.2f} s)'.format(MPIrank, time.time()-tb0))
+
+
