@@ -60,6 +60,11 @@ For the reason, the model is also required for full test.
 
 Under construction.
 
+## References
+
+1. Raikov, I., Kumar, S.S., Torben-Nielsen, B., De Schutter, E., 2014. A NineML-based domain-specific language for computational exploration of connectivity in the cerebellar granular layer. BMC Neuroscience 15, P176. https://doi.org/10.1186/1471-2202-15-S1-P176
+2. Sudhakar, S.K., Hong, S., Raikov, I., Publio, R., Lang, C., Close, T., Guo, D., Negrello, M., De Schutter, E., 2017. Spatiotemporal network coding of physiological mossy fiber inputs by the cerebellar granular layer. PLOS Computational Biology 13, e1005754. https://doi.org/10.1371/journal.pcbi.1005754
+
 ## Copyright
 
 Copyright 2021 Ohki Katakura
