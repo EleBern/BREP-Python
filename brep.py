@@ -97,7 +97,7 @@ def vprint(s):
         print('(v)', s)
 
 
-print('brep.py rank {0} args.verbose: {0}'.format(MPIrank, args.verbose))
+print('brep.py rank {0} args.verbose: {1}'.format(MPIrank, args.verbose))
 
 ###########################################################
 ### Load/generate coordinates                           ###
