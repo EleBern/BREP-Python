@@ -290,7 +290,7 @@ else:
                                 (h.GoC_Axon_Ymax - h.GoC_Axon_Ymin + 1)*GoCaxon[:,:,1])
     GoCaxon[:,:,2] = h.GoC_Axon_Zmin + np.floor(
                                 (h.GoC_Axon_Zmax - h.GoC_Axon_Zmin + 1)*GoCaxon[:,:,2])
-    g = np.tile(GoC,int(h.numAxonGolgi)).reshape(19,20,3)
+    g = np.tile(GoC,int(h.numAxonGolgi)).reshape(len(GoC),int(h.numAxonGolgi),3)
     GoCaxon = np.stack([g, g+GoCaxon], axis=2).reshape(len(GoC), int(h.numAxonGolgi*2*3))
     del(g)
     if MPIrank == 0:
