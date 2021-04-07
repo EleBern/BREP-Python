@@ -149,7 +149,9 @@ if args.loadFiles:
 
 else:
     vprint('brep.py rank {0} loadFiles: {1}'.format(MPIrank, args.loadFiles))
-    if os.path.isfile('GCcoordinates.sorted.dat') and os.path.isfile('GCTcoordinates.sorted.dat'):
+    if (os.path.isfile('GCcoordinates.sorted.dat') and os.path.isfile('GCTcoordinates.sorted.dat')
+        and os.path.getsize('GCcoordinates.sorted.dat') > 0
+        and os.path.getsize('GCTcoordinates.sorted.dat') > 0):
         GrC = np.loadtxt('GCcoordinates.sorted.dat')
         TJ = np.loadtxt('GCTcoordinates.sorted.dat')
     else:
@@ -157,7 +159,8 @@ else:
         np.savetxt('GCcoordinates.sorted.dat', GrC, '%g')
         TJ  = np.loadtxt('GCTcoordinates.dat')
         np.savetxt('GCTcoordinates.sorted.dat', TJ, '%g')
-    if os.path.isfile('GoCcoordinates.sorted.dat'):
+    if (os.path.isfile('GoCcoordinates.sorted.dat')
+        and os.path.getsize('GoCcoordinates.sorted.dat') > 0):
         GoC = np.loadtxt('GoCcoordinates.sorted.dat')
     else:
         GoC = np.loadtxt('GoCcoordinates.dat')
