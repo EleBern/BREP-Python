@@ -156,14 +156,16 @@ else:
         TJ = np.loadtxt('GCTcoordinates.sorted.dat')
     else:
         GrC = np.loadtxt('GCcoordinates.dat')
-        np.savetxt('GCcoordinates.sorted.dat', GrC, '%g')
         TJ  = np.loadtxt('GCTcoordinates.dat')
-        np.savetxt('GCTcoordinates.sorted.dat', TJ, '%g')
     if (os.path.isfile('GoCcoordinates.sorted.dat')
         and os.path.getsize('GoCcoordinates.sorted.dat') > 0):
         GoC = np.loadtxt('GoCcoordinates.sorted.dat')
     else:
         GoC = np.loadtxt('GoCcoordinates.dat')
+    MPIcomm.barrier()
+    if MPIrank == 0:
+        np.savetxt('GCcoordinates.sorted.dat', GrC, '%g')
+        np.savetxt('GCTcoordinates.sorted.dat', TJ, '%g')
         np.savetxt('GoCcoordinates.sorted.dat', GoC, '%g')
 
     GrCidx = np.arange(MPIrank, len(GrC), MPIsize).astype(np.int64)
