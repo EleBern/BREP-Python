@@ -179,7 +179,6 @@ else:
     numAAs = np.floor(AAlength / h.AAstep)
     AAs = np.stack(np.meshgrid(np.arange(numAAs.max()), AAlength / (numAAs-1))).prod(axis=0)
     AAs = np.vstack([GrCidx[np.arange(AAs.shape[0]*AAs.shape[1])//AAs.shape[1]], AAs.flatten()]).T
-    AAs = AAs[AAs[:,1]<=maxAAlen]
     AAs = np.vstack([
         AAs[:,0],
         GrC[AAs[:,0].astype(np.int64),:2].T,
