@@ -171,10 +171,11 @@ else:
     GrCidx = np.arange(MPIrank, len(GrC), MPIsize).astype(np.int64)
 
     # Ascending Axons (AAs)
-    maxAAlen = h.GLdepth + h.PCLdepth
-    AAlength = TJ[GrCidx,2] - GrC[GrCidx,2]
-    # AAlength[AAlength>maxAAlen] = maxAAlen
-    AAlength = maxAAlen*np.ones(len(GrCidx))
+    if hasattr(h, 'BREP_AAlength') and h.BREP_AAlength > 0:
+        # AA length is fixed in original BREP
+        AAlength = h.BREP_AAlength * np.ones(len(GrCidx))
+    else:
+        AAlength = TJ[GrCidx,2] - GrC[GrCidx,2]
     numAAs = np.floor(AAlength / h.AAstep)
     AAs = np.stack(np.meshgrid(np.arange(numAAs.max()), AAlength / (numAAs-1))).prod(axis=0)
     AAs = np.vstack([GrCidx[np.arange(AAs.shape[0]*AAs.shape[1])//AAs.shape[1]], AAs.flatten()]).T
@@ -193,7 +194,10 @@ else:
 
     # Parallel Fibres (PFs)
     numPFs = np.floor(h.PFlength/h.PFstep).astype(np.int64)
-    PFs = np.linspace(-h.PFlength/2, h.PFlength/2, numPFs)
+    if hasattr(h, 'BREP_PFcoeff') and h.BREP_PFcoeff > 0:
+        PFs = np.linspace(-h.PFlength*h.BREP_PFcoeff, h.PFlength*h.BREP_PFcoeff, numPFs)
+    else:
+        PFs = np.linspace(-h.PFlength, h.PFlength, numPFs)
     PFs = np.tile(PFs,[len(GrCidx),1])
     PFs = np.vstack([GrCidx[np.arange(PFs.shape[0]*PFs.shape[1])//PFs.shape[1]], PFs.flatten()]).T
     PFs = np.vstack([
@@ -336,10 +340,19 @@ results = np.stack([
 results = results.reshape(results.shape[0]*results.shape[1], results.shape[2])
 results = results[results[:,2]<=h.PFtoGoCzone]
 results = results[np.unique(results[:,:2], axis=0, return_index=True)[1]]
-dendLen = np.linalg.norm(GoCadend[results[:,0].astype(np.int64)]
+if hasattr(h, "BREP_dendcoeff") and h.BREP_dendcoeff > 0:
+    dendLen = h.BREP_dendcoeff * np.linalg.norm(GoCadend[results[:,0].astype(np.int64)]
                             - GoC[GoCadendIdx[results[:,0].astype(np.int64)]], axis=1)
+else:
+    dendLen = 0
 axonLen = np.linalg.norm(PFs[results[:,3].astype(np.int64),2:]
                             - TJ[results[:,1].astype(np.int64)], axis=1)
+if hasattr(h, "BREP_AAlenForPF"):
+    axonLen = axonLen + h.BREP_AAlenForPF * np.linalg.norm(
+        GrC[results[:,1].astype(np.int64)] - TJ[results[:,1].astype(np.int64)], axis=1)
+else:
+    axonLen = axonLen + np.linalg.norm(
+        GrC[results[:,1].astype(np.int64)] - TJ[results[:,1].astype(np.int64)], axis=1)
 results = np.vstack([
     results[:,1],
     GoCadendIdx[results[:,0].astype(np.int64)],
@@ -374,8 +387,11 @@ results = np.stack([
 results = results.reshape(results.shape[0]*results.shape[1], results.shape[2])
 results = results[results[:,2]<=h.AAtoGoCzone]
 results = results[np.unique(results[:,:2], axis=0, return_index=True)[1]]
-dendLen = np.linalg.norm(GoCdend[results[:,0].astype(np.int64)]
+if hasattr(h, "BREP_dendcoeff") and h.BREP_dendcoeff > 0:
+    dendLen = h.BREP_dendcoeff * np.linalg.norm(GoCdend[results[:,0].astype(np.int64)]
                             - GoC[GoCdendIdx[results[:,0].astype(np.int64)]], axis=1)
+else:
+    dendLen = 0
 axonLen = np.linalg.norm(AAs[results[:,3].astype(np.int64),2:]
                             - GrC[results[:,1].astype(np.int64)], axis=1)
 results = np.vstack([
