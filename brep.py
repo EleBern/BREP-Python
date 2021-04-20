@@ -193,10 +193,10 @@ else:
 
     # Parallel Fibres (PFs)
     if hasattr(h, 'BREP_PFcoeff') and h.BREP_PFcoeff > 0:
-        numPFs = np.floor(h.PFlength*h.BREP_PFcoeff/h.PFstep).astype(np.int64)
+        numPFs = np.floor(2*h.PFlength*h.BREP_PFcoeff/h.PFstep).astype(np.int64)
         PFs = np.linspace(-h.PFlength*h.BREP_PFcoeff, h.PFlength*h.BREP_PFcoeff, numPFs)
     else:
-        numPFs = np.floor(h.PFlength*2/h.PFstep).astype(np.int64)
+        numPFs = np.floor(2*h.PFlength/h.PFstep).astype(np.int64)
         PFs = np.linspace(-h.PFlength, h.PFlength, numPFs)
     PFs = np.tile(PFs,[len(GrCidx),1])
     PFs = np.vstack([GrCidx[np.arange(PFs.shape[0]*PFs.shape[1])//PFs.shape[1]], PFs.flatten()]).T
