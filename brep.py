@@ -178,12 +178,13 @@ else:
         AAlength = TJ[GrCidx,2] - GrC[GrCidx,2]
     numAAs = np.floor(AAlength / h.AAstep)
     AAs = np.stack(np.meshgrid(np.arange(numAAs.max()), AAlength / (numAAs-1))).prod(axis=0)
-    AAs = np.vstack([GrCidx[np.arange(AAs.shape[0]*AAs.shape[1])//AAs.shape[1]], AAs.flatten()]).T
-    AAs = AAs[AAs[:,1] <= AAlength[AAs[:,0].astype(np.int)]]
+    AAs = np.vstack([np.arange(AAs.shape[0]*AAs.shape[1])//AAs.shape[1], AAs.flatten()]).T
+    AAs = AAs[AAs[:,1] <= AAlength[AAs[:,0].astype(np.int64)]]
+    i = GrCidx[AAs[:,0].astype(np.int64)]
     AAs = np.vstack([
-        AAs[:,0],
-        GrC[AAs[:,0].astype(np.int64),:2].T,
-        GrC[AAs[:,0].astype(np.int64),2] + AAs[:,1]
+        i,
+        GrC[i,:2].T,
+        GrC[i,2] + AAs[:,1]
     ]).T
     AAs = AAs[np.lexsort([AAs[:,3], AAs[:,2], AAs[:,1]])]
     if args.testMode:
