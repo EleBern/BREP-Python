@@ -68,7 +68,7 @@ np.random.seed(113)
 ### Arguments/Commandline options                       ###
 ###########################################################
 
-usage = 'mpiexec -n <NUM THREADS> python3 {0} [-hlvt] [-r <RANDOM TABLE FILE>]'.format(__file__)
+usage = 'mpiexec -n <NUM THREADS> python3 {0} [-hlvtapd] [-r <RANDOM TABLE FILE>]'.format(__file__)
 argparser = ArgumentParser(usage=usage)
 argparser.add_argument('-v', '--verbose',
                         action='store_true',
@@ -82,6 +82,15 @@ argparser.add_argument('-t', '--testMode',
 argparser.add_argument('-c', '--chunk',
                         action='store_true',
                         help='<not implemented>')
+argparser.add_argument('-a', '--saveAA',
+                        action='store_true',
+                        help='Save AA coordinates (default: False)')
+argparser.add_argument('-p', '--savePF',
+                        action='store_true',
+                        help='Save PF coordinates (default: False)')
+argparser.add_argument('-d', '--saveDend',
+                        action='store_true',
+                        help='Save GoC dendrites and axon coordinates (default: False)')
 argparser.add_argument('-r', '--randomTable',
                         action='store',
                         default=None,
@@ -187,10 +196,11 @@ else:
         GrC[i,2] + AAs[:,1]
     ]).T
     AAs = AAs[np.lexsort([AAs[:,3], AAs[:,2], AAs[:,1]])]
-    if args.testMode:
-        np.savetxt('pyAAcoordinates{0}.dat'.format(MPIrank), AAs, fmt='%g')
-    else:
-        np.savetxt('AAcoordinates{0}.dat'.format(MPIrank), AAs, fmt='%g')
+    if args.saveAA:
+        if args.testMode:
+            np.savetxt('pyAAcoordinates{0}.dat'.format(MPIrank), AAs, fmt='%g')
+        else:
+            np.savetxt('AAcoordinates{0}.dat'.format(MPIrank), AAs, fmt='%g')
     AAs = np.vstack([np.arange(len(AAs)), AAs.T]).T
 
     # Parallel Fibres (PFs)
@@ -208,10 +218,11 @@ else:
         TJ[PFs[:,0].astype(np.int64),1:].T
     ]).T
     PFs = PFs[np.lexsort([PFs[:,3], PFs[:,2], PFs[:,1]])].astype(np.float64)
-    if args.testMode:
-        np.savetxt('pyPFcoordinates{0}.dat'.format(MPIrank), PFs, fmt='%g')
-    else:
-        np.savetxt('PFcoordinates{0}.dat'.format(MPIrank), PFs, fmt='%g')
+    if args.savePF:
+        if args.testMode:
+            np.savetxt('pyPFcoordinates{0}.dat'.format(MPIrank), PFs, fmt='%g')
+        else:
+            np.savetxt('PFcoordinates{0}.dat'.format(MPIrank), PFs, fmt='%g')
     PFs = np.vstack([np.arange(len(PFs)), PFs.T]).T
 
     # random numbers for GoC dendrites
@@ -244,11 +255,12 @@ else:
     GoCbdend.append(np.linspace(GoC, GoC+target, nseg).transpose(1,0,2))
     GoCbdend = np.hstack(GoCbdend).reshape(len(GoC), nseg*2*3)
     del(target)
-    if MPIrank == 0:
-        if args.testMode:
-            np.savetxt('pyGoCbdendcoordinates.sorted.dat', GoCbdend, fmt='%g')
-        else:
-            np.savetxt('GoCbdendcoordinates.sorted.dat', GoCbdend, fmt='%g')
+    if args.saveDend:
+        if MPIrank == 0:
+            if args.testMode:
+                np.savetxt('pyGoCbdendcoordinates.sorted.dat', GoCbdend, fmt='%g')
+            else:
+                np.savetxt('GoCbdendcoordinates.sorted.dat', GoCbdend, fmt='%g')
     bdendPerGoC = GoCbdend.shape[1]//3
     GoCbdend = GoCbdend.reshape(GoCbdend.shape[0]*(GoCbdend.shape[1]//3), 3)
     GoCbdendIdx = np.arange(len(GoCbdend))//bdendPerGoC
@@ -273,11 +285,12 @@ else:
     GoCadend.append(np.linspace(GoC, GoC+target, nseg).transpose(1,0,2))
     GoCadend = np.hstack(GoCadend).reshape(len(GoC), nseg*2*3)
     del(target)
-    if MPIrank == 0:
-        if args.testMode:
-            np.savetxt('pyGoCadendcoordinates.sorted.dat', GoCadend, fmt='%g')
-        else:
-            np.savetxt('GoCadendcoordinates.sorted.dat', GoCadend, fmt='%g')
+    if args.saveDend:
+        if MPIrank == 0:
+            if args.testMode:
+                np.savetxt('pyGoCadendcoordinates.sorted.dat', GoCadend, fmt='%g')
+            else:
+                np.savetxt('GoCadendcoordinates.sorted.dat', GoCadend, fmt='%g')
     adendPerGoC = GoCadend.shape[1]//3
     GoCadend = GoCadend.reshape(GoCadend.shape[0]*(GoCadend.shape[1]//3), 3)
     GoCadendIdx = np.arange(len(GoCadend))//adendPerGoC
@@ -304,11 +317,12 @@ else:
     g = np.tile(GoC,int(h.numAxonGolgi)).reshape(len(GoC),int(h.numAxonGolgi),3)
     GoCaxon = np.stack([g, g+GoCaxon], axis=2).reshape(len(GoC), int(h.numAxonGolgi*2*3))
     del(g)
-    if MPIrank == 0:
-        if args.testMode:
-            np.savetxt('pyGoCaxoncoordinates.sorted.dat', GoCaxon, fmt='%g')
-        else:
-            np.savetxt('GoCaxoncoordinates.sorted.dat', GoCaxon, fmt='%g')
+    if args.saveDend:
+        if MPIrank == 0:
+            if args.testMode:
+                np.savetxt('pyGoCaxoncoordinates.sorted.dat', GoCaxon, fmt='%g')
+            else:
+                np.savetxt('GoCaxoncoordinates.sorted.dat', GoCaxon, fmt='%g')
     axonPerGoC = GoCaxon.shape[1]//3
     GoCaxon = GoCaxon.reshape(GoCaxon.shape[0]*(GoCaxon.shape[1]//3), 3)
     GoCaxonIdx = np.arange(len(GoCaxon))//axonPerGoC
