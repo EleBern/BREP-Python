@@ -67,7 +67,7 @@ MPIrank = MPIcomm.Get_rank()
 
 GoCAxonSegs = 1
 GoCAxonPts = 2
-K4T = 200  # K value for KDTree; enough large to catch all neighbouring nodes and enough small for memory capacity
+K4T = 1000  # K value for KDTree; enough large to catch all neighbouring nodes and enough small for memory capacity
 
 GoCdendSeed = 73
 GoCaxonSeed = 79
