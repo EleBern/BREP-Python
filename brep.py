@@ -42,7 +42,6 @@ import os
 import sys
 import numpy as np
 from neuron import h
-from mpi4py import MPI
 from scipy.spatial import KDTree
 import time
 from argparse import ArgumentParser
@@ -55,9 +54,10 @@ from itertools import cycle
 
 tb0 = time.time()
 
-MPIcomm = MPI.COMM_WORLD
-MPIsize = MPIcomm.Get_size()
-MPIrank = MPIcomm.Get_rank()
+h.nrnmpi_init()
+pc = h.ParallelContext()
+MPIsize = pc.nhost()
+MPIrank = pc.id()
 
 
 #######################################################
@@ -136,7 +136,7 @@ if os.path.isfile("GoCcoordinates.sorted.dat") and os.path.getsize("GoCcoordinat
     GoC = vload("GoCcoordinates.sorted.dat")
 else:
     GoC = vload("GoCcoordinates.dat")
-MPIcomm.barrier()
+pc.barrier()
 if MPIrank == 0:
     vsave("GCcoordinates.sorted.dat", GrC, "%g")
     vsave("GCTcoordinates.sorted.dat", TJ, "%g")
@@ -265,7 +265,7 @@ tb = time.time()
 
 if args.memory:
     for i in range(MPIsize):
-        MPIcomm.barrier()
+        pc.barrier()
         if i == MPIrank:
             tree = KDTree(PFs[:, 2:])
             print(f"brep.py rank {MPIrank} KDtree built")
@@ -364,7 +364,7 @@ else:
     ).T
     del dendLen
     del axonLen
-results = np.vstack(MPIcomm.bcast(MPIcomm.gather(results, root=0), root=0))
+results = np.vstack(pc.py_broadcast(pc.py_gather(results, 0), 0))
 results = results[results[:, 1] % MPIsize == MPIrank]
 vprint(f"brep.py rank {MPIrank} results computed")
 vsave(f"PFtoGoCsources{MPIrank}.dat", results[:, 0], fmt="%d")
@@ -531,7 +531,7 @@ results = np.vstack(
 ).T
 del dendLen
 del axonLen
-results = np.vstack(MPIcomm.bcast(MPIcomm.gather(results, root=0), root=0))
+results = np.vstack(pc.py_broadcast(pc.py_gather(results, 0), 0))
 results = results[results[:, 1] % MPIsize == MPIrank]
 vsave(f"AAtoGoCsources{MPIrank}.dat", results[:, 0], fmt="%d")
 vsave(f"AAtoGoCtargets{MPIrank}.dat", results[:, 1], fmt="%d")
@@ -622,7 +622,7 @@ axonLen = np.linalg.norm(axonForTree[results[:, 3].astype(np.int64), 2:] - GoC[r
 results = np.vstack([results[:, 1], results[:, 0], results[:, 2] + dendLen + axonLen]).T
 del dendLen
 del axonLen
-results = np.vstack(MPIcomm.bcast(MPIcomm.gather(results, root=0), root=0))
+results = np.vstack(pc.py_broadcast(pc.py_gather(results, 0), 0))
 results = results[results[:, 1] % MPIsize == MPIrank]
 vsave(f"GoCtoGoCsources{MPIrank}.dat", results[:, 0], fmt="%d")
 vsave(f"GoCtoGoCtargets{MPIrank}.dat", results[:, 1], fmt="%d")
@@ -661,7 +661,7 @@ results = results.reshape(results.shape[0] * results.shape[1], results.shape[2])
 results = results[(results[:, 2] <= h.GoCtoGoCgapzone) & (results[:, 0] != results[:, 1])]
 results = results[np.unique(results[:, :2], axis=0, return_index=True)[1]]
 results = np.vstack([results[:, 1], results[:, 0], results[:, 2]]).T
-results = np.vstack(MPIcomm.bcast(MPIcomm.gather(results, root=0), root=0))
+results = np.vstack(pc.py_broadcast(pc.py_gather(results, 0), 0))
 results = results[results[:, 1] % MPIsize == MPIrank]
 vsave(f"GoCtoGoCgapsources{MPIrank}.dat", results[:, 0], fmt="%d")
 vsave(f"GoCtoGoCgaptargets{MPIrank}.dat", results[:, 1], fmt="%d")
