@@ -274,7 +274,7 @@ if args.memory:
             print(f"brep.py rank {MPIrank} KDTree queried")
             del tree
             distKDTree = distKDTree.astype(np.float32)
-            idxKDTree = idxKDTree.astype(np.float32)
+            idxKDTree = idxKDTree.astype(np.int32)
 
             results = np.stack(
                 [
