@@ -636,6 +636,7 @@ vsave(f"GoCtoGoCsources{MPIrank}.dat", results[:, 0], fmt="%d")
 vsave(f"GoCtoGoCtargets{MPIrank}.dat", results[:, 1], fmt="%d")
 vsave(f"GoCtoGoCdistances{MPIrank}.dat", results[:, 2], fmt="%f")
 vprint(f"brep.py rank {MPIrank} GoCs to GoCs inh ({time.time() - tb:.2f} s)")
+del results
 
 
 #######################################################
@@ -680,6 +681,7 @@ vprint(f"brep.py rank {MPIrank} GoCs to GoCs gap ({time.time() - tb:.2f} s)")
 
 
 vprint(f"brep.py rank {MPIrank} completed ({time.time() - tb0:.2f} s)")
+del results
 
 
 # #######################################################
