@@ -273,14 +273,16 @@ if args.memory:
             distKDTree, idxKDTree = tree.query(GoCadend, k=K)
             print(f"brep.py rank {MPIrank} KDTree queried")
             del tree
+            distKDTree = distKDTree.astype(np.float32)
+            idxKDTree = idxKDTree.astype(np.float32)
 
             results = np.stack(
                 [
-                    np.repeat(np.arange(len(GoCadend)), K).reshape(len(GoCadend), K),
+                    np.repeat(np.arange(len(GoCadend),dtype=np.float32), K).reshape(len(GoCadend), K),
                     PFs[idxKDTree, 1],
                     distKDTree,
                     idxKDTree,
-                ]
+                ], dtype=np.float32
             ).transpose(1, 2, 0)
             del distKDTree
             del idxKDTree
