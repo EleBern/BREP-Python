@@ -325,14 +325,16 @@ else:
     distKDTree, idxKDTree = tree.query(GoCadend, k=K)
     print(f"brep.py rank {MPIrank} KDTree queried")
     del tree
+    distKDTree = distKDTree.astype(np.float32)
+    idxKDTree = idxKDTree.astype(np.int32)
 
     results = np.stack(
         [
-            np.repeat(np.arange(len(GoCadend)), K).reshape(len(GoCadend), K),
+            np.repeat(np.arange(len(GoCadend),dtype=np.float32), K).reshape(len(GoCadend), K),
             PFs[idxKDTree, 1],
             distKDTree,
             idxKDTree,
-        ]
+        ], dtype=np.float32
     ).transpose(1, 2, 0)
     del distKDTree
     del idxKDTree
@@ -502,14 +504,16 @@ K = min(len(AAs), K4T)
 distKDTree, idxKDTree = tree.query(GoCdend, k=K)
 print(f"brep.py rank {MPIrank} KDtree queried")
 del tree
+distKDTree = distKDTree.astype(np.float32)
+idxKDTree = idxKDTree.astype(np.int32)
 
 results = np.stack(
     [
-        np.repeat(np.arange(len(GoCdend)), K).reshape(len(GoCdend), K),
+        np.repeat(np.arange(len(GoCdend), dtype=np.float32), K).reshape(len(GoCdend), K),
         AAs[idxKDTree, 1],
         distKDTree,
         idxKDTree,
-    ]
+    ], dtype=np.float32
 ).transpose(1, 2, 0)
 del distKDTree
 del idxKDTree
@@ -601,14 +605,16 @@ K = min(len(axonForTree), K4T)
 distKDTree, idxKDTree = tree.query(GoC, k=K)
 print(f"brep.py rank {MPIrank} KDtree queried")
 del tree
+distKDTree = distKDTree.astype(np.float32)
+idxKDTree = idxKDTree.astype(np.int32)
 
 results = np.stack(
     [
-        np.repeat(np.arange(len(GoC)), K).reshape(len(GoC), K),
+        np.repeat(np.arange(len(GoC), dtype=np.float32), K).reshape(len(GoC), K),
         axonForTree[idxKDTree, 1],
         distKDTree,
         idxKDTree,
-    ]
+    ], dtype=np.float32
 ).transpose(1, 2, 0)
 del distKDTree
 del idxKDTree
@@ -648,14 +654,16 @@ K = min(len(GoCForTree), K4T)
 distKDTree, idxKDTree = tree.query(GoC, k=K)
 print(f"brep.py rank {MPIrank} KDtree queried")
 del tree
+distKDTree = distKDTree.astype(np.float32)
+idxKDTree = idxKDTree.astype(np.int32)
 
 results = np.stack(
     [
-        np.repeat(np.arange(len(GoC)), K).reshape(len(GoC), K),
+        np.repeat(np.arange(len(GoC),dtype=np.float32), K).reshape(len(GoC), K),
         GoCForTree[idxKDTree, 1],
         distKDTree,
         idxKDTree,
-    ]
+    ], dtype=np.float32
 ).transpose(1, 2, 0)
 del distKDTree
 del idxKDTree
