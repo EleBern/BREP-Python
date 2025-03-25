@@ -42,7 +42,6 @@ import os
 import sys
 import numpy as np
 from neuron import h
-from mpi4py import MPI
 from scipy.spatial import KDTree
 import time
 from argparse import ArgumentParser
@@ -55,9 +54,10 @@ from itertools import cycle
 
 tb0 = time.time()
 
-MPIcomm = MPI.COMM_WORLD
-MPIsize = MPIcomm.Get_size()
-MPIrank = MPIcomm.Get_rank()
+h.nrnmpi_init()
+pc = h.ParallelContext()
+MPIsize = pc.nhost()
+MPIrank = pc.id()
 
 
 #######################################################
@@ -136,7 +136,7 @@ if os.path.isfile("GoCcoordinates.sorted.dat") and os.path.getsize("GoCcoordinat
     GoC = vload("GoCcoordinates.sorted.dat")
 else:
     GoC = vload("GoCcoordinates.dat")
-MPIcomm.barrier()
+pc.barrier()
 if MPIrank == 0:
     vsave("GCcoordinates.sorted.dat", GrC, "%g")
     vsave("GCTcoordinates.sorted.dat", TJ, "%g")
@@ -265,7 +265,7 @@ tb = time.time()
 
 if args.memory:
     for i in range(MPIsize):
-        MPIcomm.barrier()
+        pc.barrier()
         if i == MPIrank:
             tree = KDTree(PFs[:, 2:])
             print(f"brep.py rank {MPIrank} KDtree built")
@@ -273,14 +273,16 @@ if args.memory:
             distKDTree, idxKDTree = tree.query(GoCadend, k=K)
             print(f"brep.py rank {MPIrank} KDTree queried")
             del tree
+            distKDTree = distKDTree.astype(np.float32)
+            idxKDTree = idxKDTree.astype(np.int32)
 
             results = np.stack(
                 [
-                    np.repeat(np.arange(len(GoCadend)), K).reshape(len(GoCadend), K),
+                    np.repeat(np.arange(len(GoCadend),dtype=np.float32), K).reshape(len(GoCadend), K),
                     PFs[idxKDTree, 1],
                     distKDTree,
                     idxKDTree,
-                ]
+                ], dtype=np.float32
             ).transpose(1, 2, 0)
             del distKDTree
             del idxKDTree
@@ -323,14 +325,16 @@ else:
     distKDTree, idxKDTree = tree.query(GoCadend, k=K)
     print(f"brep.py rank {MPIrank} KDTree queried")
     del tree
+    distKDTree = distKDTree.astype(np.float32)
+    idxKDTree = idxKDTree.astype(np.int32)
 
     results = np.stack(
         [
-            np.repeat(np.arange(len(GoCadend)), K).reshape(len(GoCadend), K),
+            np.repeat(np.arange(len(GoCadend),dtype=np.float32), K).reshape(len(GoCadend), K),
             PFs[idxKDTree, 1],
             distKDTree,
             idxKDTree,
-        ]
+        ], dtype=np.float32
     ).transpose(1, 2, 0)
     del distKDTree
     del idxKDTree
@@ -364,7 +368,7 @@ else:
     ).T
     del dendLen
     del axonLen
-results = np.vstack(MPIcomm.bcast(MPIcomm.gather(results, root=0), root=0))
+results = np.vstack(pc.py_broadcast(pc.py_gather(results, 0), 0))
 results = results[results[:, 1] % MPIsize == MPIrank]
 vprint(f"brep.py rank {MPIrank} results computed")
 vsave(f"PFtoGoCsources{MPIrank}.dat", results[:, 0], fmt="%d")
@@ -500,14 +504,16 @@ K = min(len(AAs), K4T)
 distKDTree, idxKDTree = tree.query(GoCdend, k=K)
 print(f"brep.py rank {MPIrank} KDtree queried")
 del tree
+distKDTree = distKDTree.astype(np.float32)
+idxKDTree = idxKDTree.astype(np.int32)
 
 results = np.stack(
     [
-        np.repeat(np.arange(len(GoCdend)), K).reshape(len(GoCdend), K),
+        np.repeat(np.arange(len(GoCdend), dtype=np.float32), K).reshape(len(GoCdend), K),
         AAs[idxKDTree, 1],
         distKDTree,
         idxKDTree,
-    ]
+    ], dtype=np.float32
 ).transpose(1, 2, 0)
 del distKDTree
 del idxKDTree
@@ -531,7 +537,7 @@ results = np.vstack(
 ).T
 del dendLen
 del axonLen
-results = np.vstack(MPIcomm.bcast(MPIcomm.gather(results, root=0), root=0))
+results = np.vstack(pc.py_broadcast(pc.py_gather(results, 0), 0))
 results = results[results[:, 1] % MPIsize == MPIrank]
 vsave(f"AAtoGoCsources{MPIrank}.dat", results[:, 0], fmt="%d")
 vsave(f"AAtoGoCtargets{MPIrank}.dat", results[:, 1], fmt="%d")
@@ -599,14 +605,16 @@ K = min(len(axonForTree), K4T)
 distKDTree, idxKDTree = tree.query(GoC, k=K)
 print(f"brep.py rank {MPIrank} KDtree queried")
 del tree
+distKDTree = distKDTree.astype(np.float32)
+idxKDTree = idxKDTree.astype(np.int32)
 
 results = np.stack(
     [
-        np.repeat(np.arange(len(GoC)), K).reshape(len(GoC), K),
+        np.repeat(np.arange(len(GoC), dtype=np.float32), K).reshape(len(GoC), K),
         axonForTree[idxKDTree, 1],
         distKDTree,
         idxKDTree,
-    ]
+    ], dtype=np.float32
 ).transpose(1, 2, 0)
 del distKDTree
 del idxKDTree
@@ -622,12 +630,13 @@ axonLen = np.linalg.norm(axonForTree[results[:, 3].astype(np.int64), 2:] - GoC[r
 results = np.vstack([results[:, 1], results[:, 0], results[:, 2] + dendLen + axonLen]).T
 del dendLen
 del axonLen
-results = np.vstack(MPIcomm.bcast(MPIcomm.gather(results, root=0), root=0))
+results = np.vstack(pc.py_broadcast(pc.py_gather(results, 0), 0))
 results = results[results[:, 1] % MPIsize == MPIrank]
 vsave(f"GoCtoGoCsources{MPIrank}.dat", results[:, 0], fmt="%d")
 vsave(f"GoCtoGoCtargets{MPIrank}.dat", results[:, 1], fmt="%d")
 vsave(f"GoCtoGoCdistances{MPIrank}.dat", results[:, 2], fmt="%f")
 vprint(f"brep.py rank {MPIrank} GoCs to GoCs inh ({time.time() - tb:.2f} s)")
+del results
 
 
 #######################################################
@@ -646,14 +655,16 @@ K = min(len(GoCForTree), K4T)
 distKDTree, idxKDTree = tree.query(GoC, k=K)
 print(f"brep.py rank {MPIrank} KDtree queried")
 del tree
+distKDTree = distKDTree.astype(np.float32)
+idxKDTree = idxKDTree.astype(np.int32)
 
 results = np.stack(
     [
-        np.repeat(np.arange(len(GoC)), K).reshape(len(GoC), K),
+        np.repeat(np.arange(len(GoC),dtype=np.float32), K).reshape(len(GoC), K),
         GoCForTree[idxKDTree, 1],
         distKDTree,
         idxKDTree,
-    ]
+    ], dtype=np.float32
 ).transpose(1, 2, 0)
 del distKDTree
 del idxKDTree
@@ -661,7 +672,7 @@ results = results.reshape(results.shape[0] * results.shape[1], results.shape[2])
 results = results[(results[:, 2] <= h.GoCtoGoCgapzone) & (results[:, 0] != results[:, 1])]
 results = results[np.unique(results[:, :2], axis=0, return_index=True)[1]]
 results = np.vstack([results[:, 1], results[:, 0], results[:, 2]]).T
-results = np.vstack(MPIcomm.bcast(MPIcomm.gather(results, root=0), root=0))
+results = np.vstack(pc.py_broadcast(pc.py_gather(results, 0), 0))
 results = results[results[:, 1] % MPIsize == MPIrank]
 vsave(f"GoCtoGoCgapsources{MPIrank}.dat", results[:, 0], fmt="%d")
 vsave(f"GoCtoGoCgaptargets{MPIrank}.dat", results[:, 1], fmt="%d")
@@ -670,244 +681,7 @@ vprint(f"brep.py rank {MPIrank} GoCs to GoCs gap ({time.time() - tb:.2f} s)")
 
 
 vprint(f"brep.py rank {MPIrank} completed ({time.time() - tb0:.2f} s)")
+del results
 
-
-# #######################################################
-# # Load/generate coordinates                           #
-# #######################################################
-
-# tb = time.time()
-# if args.loadFiles:
-#     vprint(f"brep.py rank {MPIrank} loadFiles: {args.loadFiles}")
-#     GrC = vload("GCcoordinates.sorted.dat")
-#     TJ = vload("GCTcoordinates.sorted.dat")
-#     GoC = vload("GoCcoordinates.sorted.dat")
-
-#     AAs = vload(f"AAcoordinates{MPIrank}.dat")
-#     AAs = np.vstack([np.arange(len(AAs)), AAs.T]).T
-
-#     PFs = vload(f"PFcoordinates{MPIrank}.dat")
-#     PFs = np.vstack([np.arange(len(PFs)), PFs.T]).T
-
-#     GoCadend = vload("GoCadendcoordinates.sorted.dat")
-#     adendPerGoC = GoCadend.shape[1] // 3
-#     GoCadend = GoCadend.reshape(GoCadend.shape[0] * (GoCadend.shape[1] // 3), 3)
-#     GoCadendIdx = np.arange(len(GoCadend)) // adendPerGoC
-#     adendSegIdx = np.arange(len(GoCadend)) % adendPerGoC
-#     adendSecIdx = adendSegIdx % (h.GoC_Ad_nseg * h.GoC_Ad_nsegpts) // (h.GoC_Ad_nsegpts) + 1
-#     adendDendIdx = h.numDendGolgi - adendSegIdx // (h.GoC_Ad_nseg * h.GoC_Ad_nsegpts)
-
-#     GoCbdend = vload("GoCbdendcoordinates.sorted.dat")
-#     bdendPerGoC = GoCbdend.shape[1] // 3
-#     GoCbdend = GoCbdend.reshape(GoCbdend.shape[0] * (GoCbdend.shape[1] // 3), 3)
-#     GoCbdendIdx = np.arange(len(GoCbdend)) // bdendPerGoC
-#     bdendSegIdx = np.arange(len(GoCbdend)) % bdendPerGoC
-#     bdendSecIdx = bdendSegIdx % (h.GoC_Bd_nseg * h.GoC_Bd_nsegpts) // (h.GoC_Bd_nsegpts) + 1
-#     bdendDendIdx = h.numDendGolgi / 2 - bdendSegIdx // (h.GoC_Bd_nseg * h.GoC_Bd_nsegpts)
-
-#     GoCdend = np.vstack([GoCadend, GoCbdend])
-#     GoCdendIdx = np.hstack([GoCadendIdx, GoCbdendIdx])
-#     dendSegIdx = np.hstack([adendSegIdx, bdendSegIdx])
-#     dendSecIdx = np.hstack([adendSecIdx, bdendSecIdx])
-#     dendDendIdx = np.hstack([adendDendIdx, bdendDendIdx])
-
-#     GoCaxon = vload("GoCaxoncoordinates.sorted.dat")
-#     axonPerGoC = GoCaxon.shape[1] // 3
-#     GoCaxon = GoCaxon.reshape(GoCaxon.shape[0] * (GoCaxon.shape[1] // 3), 3)
-#     GoCaxonIdx = np.arange(len(GoCaxon)) // axonPerGoC
-#     axonSegIdx = np.arange(len(GoCaxon)) % axonPerGoC
-#     axonSecIdx = axonSegIdx % (GoCAxonSegs * GoCAxonPts) // (GoCAxonPts) + 1
-#     axonDendIdx = h.numAxonGolgi - axonSegIdx // (GoCAxonSegs * GoCAxonPts)
-#     vprint(f"brep.py rank {MPIrank} Finish to load files ({time.time() - tb:.2f} s)")
-
-# else:
-#     vprint(f"brep.py rank {MPIrank} loadFiles: {args.loadFiles}")
-#     if (
-#         os.path.isfile("GCcoordinates.sorted.dat")
-#         and os.path.isfile("GCTcoordinates.sorted.dat")
-#         and os.path.getsize("GCcoordinates.sorted.dat") > 0
-#         and os.path.getsize("GCTcoordinates.sorted.dat") > 0
-#     ):
-#         GrC = vload("GCcoordinates.sorted.dat")
-#         TJ = vload("GCTcoordinates.sorted.dat")
-#     else:
-#         GrC = vload("GCcoordinates.dat")
-#         TJ = vload("GCTcoordinates.dat")
-#     if os.path.isfile("GoCcoordinates.sorted.dat") and os.path.getsize("GoCcoordinates.sorted.dat") > 0:
-#         GoC = vload("GoCcoordinates.sorted.dat")
-#     else:
-#         GoC = vload("GoCcoordinates.dat")
-#     MPIcomm.barrier()
-#     if MPIrank == 0:
-#         vsave("GCcoordinates.sorted.dat", GrC, "%g")
-#         vsave("GCTcoordinates.sorted.dat", TJ, "%g")
-#         vsave("GoCcoordinates.sorted.dat", GoC, "%g")
-
-#     GrCidx = np.arange(MPIrank, len(GrC), MPIsize).astype(np.int64)
-
-#     # Ascending Axons (AAs)
-#     if hasattr(h, "BREP_AAlength") and h.BREP_AAlength > 0:
-#         # AA length is fixed in original BREP
-#         AAlength = h.BREP_AAlength * np.ones(len(GrCidx))
-#     else:
-#         AAlength = TJ[GrCidx, 2] - GrC[GrCidx, 2]
-#     numAAs = np.floor(AAlength / h.AAstep)
-#     AAs = np.stack(np.meshgrid(np.arange(numAAs.max()), AAlength / (numAAs - 1))).prod(axis=0)
-#     del numAAs
-#     AAs = np.vstack([np.arange(AAs.shape[0] * AAs.shape[1]) // AAs.shape[1], AAs.flatten()]).T
-#     AAs = AAs[AAs[:, 1] <= AAlength[AAs[:, 0].astype(np.int32)]]
-#     i = GrCidx[AAs[:, 0].astype(np.int32)]
-#     AAs = np.vstack([i, GrC[i, :2].T, GrC[i, 2] + AAs[:, 1]]).T
-#     del i
-#     AAs = AAs[np.lexsort([AAs[:, 3], AAs[:, 2], AAs[:, 1]])].astype(np.float32)
-#     if args.saveAA:
-#         if args.testMode:
-#             vsave(f"pyAAcoordinates{MPIrank}.dat", AAs, fmt="%g")
-#         else:
-#             vsave(f"AAcoordinates{MPIrank}.dat", AAs, fmt="%g")
-#     AAs = np.vstack([np.arange(len(AAs)), AAs.T]).T.astype(np.float32)
-
-#     # Parallel Fibres (PFs)
-#     if hasattr(h, "BREP_PFcoeff") and h.BREP_PFcoeff > 0:
-#         numPFs = np.floor(2 * h.PFlength * h.BREP_PFcoeff / h.PFstep).astype(np.int32)
-#         PFs = np.linspace(-h.PFlength * h.BREP_PFcoeff, h.PFlength * h.BREP_PFcoeff, numPFs).astype(np.float32)
-#     else:
-#         numPFs = np.floor(2 * h.PFlength / h.PFstep).astype(np.int32)
-#         PFs = np.linspace(-h.PFlength, h.PFlength, numPFs).astype(np.float32)
-#     del numPFs
-#     PFs = np.tile(PFs, [len(GrCidx), 1]).astype(np.float32)
-#     PFs = np.vstack([GrCidx[np.arange(PFs.shape[0] * PFs.shape[1]) // PFs.shape[1]], PFs.flatten()]).T.astype(np.float32)
-#     PFs = np.vstack([PFs[:, 0], TJ[PFs[:, 0].astype(np.int32), 0] + PFs[:, 1], TJ[PFs[:, 0].astype(np.int32), 1:].T]).T.astype(np.float32)
-#     PFs = PFs[np.lexsort([PFs[:, 3], PFs[:, 2], PFs[:, 1]])].astype(np.float32)
-#     if args.savePF:
-#         if args.testMode:
-#             vsave(f"pyPFcoordinates{MPIrank}.dat", PFs, fmt="%g")
-#         else:
-#             vsave(f"PFcoordinates{MPIrank}.dat", PFs, fmt="%g")
-#     PFs = np.vstack([np.arange(len(PFs)), PFs.T]).T.astype(np.float32)
-
-#     # random numbers for GoC dendrites
-#     if args.randomTable:
-#         from itertools import cycle
-
-#         theta = cycle(vload(args.randomTable))
-#         theta = [next(theta) for i in range(len(GoC) * int(h.numDendGolgi))]
-#         theta = np.array(theta).reshape([len(GoC), int(h.numDendGolgi)])
-#     else:
-#         np.random.seed(GoCdendSeed)
-#         theta = np.random.normal(0, 1, [len(GoC), int(h.numDendGolgi)])
-#     thetaStd = np.array([h.GoC_Btheta_stdev, h.GoC_Btheta_stdev, h.GoC_Atheta_stdev, h.GoC_Atheta_stdev])
-#     thetaMean = np.array([h.GoC_Btheta_max, h.GoC_Btheta_min, h.GoC_Atheta_max, h.GoC_Atheta_min])
-#     theta = theta * thetaStd + thetaMean
-#     del thetaMean
-#     del thetaStd
-
-#     # Basolateral dendrites (BDs)
-#     GoCbdend = []
-#     nseg = int(h.GoC_Bd_nseg * h.GoC_Bd_nsegpts)
-#     target = np.vstack(
-#         [
-#             h.GoC_PhysBasolateralDendR * np.cos(theta[:, 0] * np.pi / 180),
-#             h.GoC_PhysBasolateralDendR * np.sin(theta[:, 0] * np.pi / 180),
-#             h.GoC_PhysBasolateralDendH * np.ones(len(theta)),
-#         ]
-#     ).T
-#     GoCbdend.append(np.linspace(GoC, GoC + target, nseg).transpose(1, 0, 2))
-#     target = np.vstack(
-#         [
-#             h.GoC_PhysBasolateralDendR * np.cos(theta[:, 1] * np.pi / 180),
-#             h.GoC_PhysBasolateralDendR * np.sin(theta[:, 1] * np.pi / 180),
-#             h.GoC_PhysBasolateralDendH * np.ones(len(theta)),
-#         ]
-#     ).T
-#     GoCbdend.append(np.linspace(GoC, GoC + target, nseg).transpose(1, 0, 2))
-#     del target
-#     GoCbdend = np.hstack(GoCbdend).reshape(len(GoC), nseg * 2 * 3)
-#     if args.saveDend:
-#         if MPIrank == 0:
-#             if args.testMode:
-#                 vsave("pyGoCbdendcoordinates.sorted.dat", GoCbdend, fmt="%g")
-#             else:
-#                 vsave("GoCbdendcoordinates.sorted.dat", GoCbdend, fmt="%g")
-#     bdendPerGoC = GoCbdend.shape[1] // 3
-#     GoCbdend = GoCbdend.reshape(GoCbdend.shape[0] * (GoCbdend.shape[1] // 3), 3)
-#     GoCbdendIdx = np.arange(len(GoCbdend)) // bdendPerGoC
-#     bdendSegIdx = np.arange(len(GoCbdend)) % bdendPerGoC
-#     bdendSecIdx = bdendSegIdx % (h.GoC_Bd_nseg * h.GoC_Bd_nsegpts) // (h.GoC_Bd_nsegpts) + 1
-#     bdendDendIdx = h.numDendGolgi / 2 - bdendSegIdx // (h.GoC_Bd_nseg * h.GoC_Bd_nsegpts)
-
-#     # Apical dendrites (ADs)
-#     GoCadend = []
-#     nseg = int(h.GoC_Ad_nseg * h.GoC_Ad_nsegpts)
-#     target = np.vstack(
-#         [
-#             h.GoC_PhysApicalDendR * np.cos(theta[:, 2] * np.pi / 180),
-#             h.GoC_PhysApicalDendR * np.sin(theta[:, 2] * np.pi / 180),
-#             h.GoC_PhysApicalDendH * np.ones(len(theta)),
-#         ]
-#     ).T
-#     GoCadend.append(np.linspace(GoC, GoC + target, nseg).transpose(1, 0, 2))
-#     target = np.vstack(
-#         [
-#             h.GoC_PhysApicalDendR * np.cos(theta[:, 3] * np.pi / 180),
-#             h.GoC_PhysApicalDendR * np.sin(theta[:, 3] * np.pi / 180),
-#             h.GoC_PhysApicalDendH * np.ones(len(theta)),
-#         ]
-#     ).T
-#     del theta
-#     GoCadend.append(np.linspace(GoC, GoC + target, nseg).transpose(1, 0, 2))
-#     del target
-#     GoCadend = np.hstack(GoCadend).reshape(len(GoC), nseg * 2 * 3)
-#     if args.saveDend:
-#         if MPIrank == 0:
-#             if args.testMode:
-#                 vsave("pyGoCadendcoordinates.sorted.dat", GoCadend, fmt="%g")
-#             else:
-#                 vsave("GoCadendcoordinates.sorted.dat", GoCadend, fmt="%g")
-#     adendPerGoC = GoCadend.shape[1] // 3
-#     GoCadend = GoCadend.reshape(GoCadend.shape[0] * (GoCadend.shape[1] // 3), 3)
-#     GoCadendIdx = np.arange(len(GoCadend)) // adendPerGoC
-#     adendSegIdx = np.arange(len(GoCadend)) % adendPerGoC
-#     adendSecIdx = adendSegIdx % (h.GoC_Ad_nseg * h.GoC_Ad_nsegpts) // (h.GoC_Ad_nsegpts) + 1
-#     adendDendIdx = h.numDendGolgi - adendSegIdx // (h.GoC_Ad_nseg * h.GoC_Ad_nsegpts)
-
-#     # dendrites
-#     GoCdend = np.vstack([GoCadend, GoCbdend])
-#     del GoCbdend
-#     GoCdendIdx = np.hstack([GoCadendIdx, GoCbdendIdx])
-#     del GoCbdendIdx
-#     dendSegIdx = np.hstack([adendSegIdx, bdendSegIdx])
-#     del adendSegIdx
-#     del bdendSegIdx
-#     dendSecIdx = np.hstack([adendSecIdx, bdendSecIdx])
-#     del bdendSecIdx
-#     dendDendIdx = np.hstack([adendDendIdx, bdendDendIdx])
-#     del bdendDendIdx
-
-#     # GoC axons
-#     np.random.seed(GoCaxonSeed)
-#     GoCaxon = np.random.random([len(GoC), int(h.numAxonGolgi), 3])
-#     GoCaxon[:, :, 0] = h.GoC_Axon_Xmin + np.floor((h.GoC_Axon_Xmax - h.GoC_Axon_Xmin + 1) * GoCaxon[:, :, 0])
-#     GoCaxon[:, :, 1] = h.GoC_Axon_Ymin + np.floor((h.GoC_Axon_Ymax - h.GoC_Axon_Ymin + 1) * GoCaxon[:, :, 1])
-#     GoCaxon[:, :, 2] = h.GoC_Axon_Zmin + np.floor((h.GoC_Axon_Zmax - h.GoC_Axon_Zmin + 1) * GoCaxon[:, :, 2])
-#     g = np.tile(GoC, int(h.numAxonGolgi)).reshape(len(GoC), int(h.numAxonGolgi), 3)
-#     GoCaxon = np.stack([g, g + GoCaxon], axis=2).reshape(len(GoC), int(h.numAxonGolgi * 2 * 3))
-#     del g
-#     if args.saveDend:
-#         if MPIrank == 0:
-#             if args.testMode:
-#                 vsave("pyGoCaxoncoordinates.sorted.dat", GoCaxon, fmt="%g")
-#             else:
-#                 vsave("GoCaxoncoordinates.sorted.dat", GoCaxon, fmt="%g")
-#     axonPerGoC = GoCaxon.shape[1] // 3
-#     GoCaxon = GoCaxon.reshape(GoCaxon.shape[0] * (GoCaxon.shape[1] // 3), 3)
-#     GoCaxonIdx = np.arange(len(GoCaxon)) // axonPerGoC
-#     axonSegIdx = np.arange(len(GoCaxon)) % axonPerGoC
-#     axonSecIdx = axonSegIdx % (GoCAxonSegs * GoCAxonPts) // (GoCAxonPts) + 1
-#     axonDendIdx = h.numAxonGolgi - axonSegIdx // (GoCAxonSegs * GoCAxonPts)
-
-#     vprint(f"brep.py rank {MPIrank} Finish to create coordinations ({time.time() - tb:.2f} s)")
-
-# if args.testMode:
-#     print("TEST MODE")
-#     sys.exit(1)
+pc.done()
+h.quit()
